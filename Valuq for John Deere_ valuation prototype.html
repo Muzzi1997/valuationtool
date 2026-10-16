@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Valuq for John Deere: used equipment valuation prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F6F1; --surface:#FFFFFF; --surface-2:#EAEFE7; --ink:#17201A; --ink-2:#55604F; --line:#D5DDD0;
+  --green:#367C2B; --green-ink:#FFFFFF; --green-soft:rgba(54,124,43,.12); --head:#1E4419; --head-ink:#F3F6F1;
+  --yellow:#FFDE00; --yellow-ink:#1D2410; --warn:#9A5B00; --bad:#A8261D; --good:#2E7A2C;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E130D; --surface:#151C14; --surface-2:#1C251B; --ink:#E6ECE3; --ink-2:#A2AD9C; --line:#2B3727;
+    --green:#5FAE4F; --green-ink:#0E130D; --green-soft:rgba(95,174,79,.16); --head:#0A1808; --head-ink:#E6ECE3;
+    --warn:#E0A43A; --bad:#F08A80; --good:#7CC56C; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E130D; --surface:#151C14; --surface-2:#1C251B; --ink:#E6ECE3; --ink-2:#A2AD9C; --line:#2B3727;
+  --green:#5FAE4F; --green-ink:#0E130D; --green-soft:rgba(95,174,79,.16); --head:#0A1808; --head-ink:#E6ECE3;
+  --warn:#E0A43A; --bad:#F08A80; --good:#7CC56C; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--head)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+a{color:var(--green)}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--head);color:var(--head-ink)}
+.top-in{max-width:1280px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:12px;min-width:0}
+.brand b{font-stretch:118%;font-weight:800;font-size:20px;letter-spacing:-.01em;color:var(--yellow)}
+.brand span{font-size:15px;opacity:.92}
+.powered{margin-left:auto;font-size:13px;opacity:.85}
+.powered strong{font-stretch:112%;font-weight:700;opacity:1}
+nav.tabs{max-width:1280px;margin:0 auto;padding:0 12px;display:flex;gap:4px}
+nav.tabs button{background:none;border:0;color:var(--head-ink);opacity:.75;padding:10px 12px 12px;cursor:pointer;border-bottom:3px solid transparent;font-weight:600}
+nav.tabs button[aria-selected="true"]{opacity:1;border-bottom-color:var(--yellow)}
+
+main{max-width:1280px;margin:0 auto;padding:24px 20px 64px}
+.view[hidden]{display:none}
+.layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:920px){.layout{grid-template-columns:1fr}}
+
+/* form panel */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+aside.panel{position:sticky;top:calc(env(safe-area-inset-top,0px) + 112px)}
+@media (max-width:920px){aside.panel{position:static}}
+aside h2{font-stretch:112%;font-size:18px;margin:0 0 4px}
+aside .hint{color:var(--ink-2);font-size:13px;margin:0 0 16px}
+.field{margin-bottom:14px}
+.field label,.field .lab{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
+.field input[type=text],.field input[type=number],.field select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pin{display:flex;gap:8px}
+.pin input{flex:1;min-width:0;text-transform:uppercase}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--green);border-color:var(--green);color:var(--green-ink);width:100%;padding:12px;font-size:16px}
+.btn.primary:hover{filter:brightness(1.08)}
+.linkbtn{background:none;border:0;color:var(--green);cursor:pointer;padding:0;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--bg);padding:8px;cursor:pointer;font-weight:600;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--green);color:var(--green-ink)}
+.linked{margin-top:8px;font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.score-chip{display:inline-block;min-width:34px;text-align:center;padding:2px 6px;border-radius:6px;background:var(--green-soft);color:var(--ink);font-weight:700}
+.checks label{display:flex;gap:8px;align-items:center;font-weight:400;font-size:14px;margin:0 0 6px;cursor:pointer}
+.checks input{accent-color:var(--green);width:16px;height:16px}
+.checks small{margin-left:auto;color:var(--ink-2)}
+.formfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13px}
+
+/* empty */
+.empty{padding:56px 32px;text-align:left}
+.empty h2{font-stretch:120%;font-size:34px;line-height:1.1;margin:0 0 12px;max-width:16ch;letter-spacing:-.015em}
+.empty p{color:var(--ink-2);max-width:56ch;margin:0 0 20px}
+.how{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:28px 0 0;padding:0;list-style:none;counter-reset:s}
+.how li{border-top:3px solid var(--green);padding-top:10px;font-size:13px;color:var(--ink-2)}
+.how li b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+@media (max-width:760px){.how{grid-template-columns:1fr 1fr}}
+
+/* result */
+.result{display:flex;flex-direction:column;gap:20px}
+.machine{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between}
+.machine h1{font-stretch:115%;font-size:28px;line-height:1.15;margin:0;letter-spacing:-.015em}
+.machine .meta{color:var(--ink-2);font-size:14px}
+.valrow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:end}
+@media (max-width:760px){.valrow{grid-template-columns:1fr}}
+.fmv-lab{font-weight:600;font-size:14px;color:var(--ink-2);margin:0}
+.fmv{font-stretch:72%;font-weight:800;font-size:clamp(56px,8vw,92px);line-height:.95;letter-spacing:-.01em;margin:4px 0 8px;display:inline-block;background:linear-gradient(transparent 68%,var(--yellow) 68%,var(--yellow) 92%,transparent 92%);padding:0 4px;margin-left:-4px;color:var(--ink)}
+.fmv-sub{font-size:14px;color:var(--ink-2)}
+.conf{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--ink)}
+.conf i{display:inline-block;width:52px;height:6px;border-radius:3px;background:var(--surface-2);position:relative;overflow:hidden}
+.conf i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);background:var(--green)}
+.channels{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.channels div{padding:12px 14px;border-left:1px solid var(--line)}
+.channels div:first-child{border-left:0}
+.channels .k{font-size:13px;color:var(--ink-2);display:block}
+.channels .v{font-stretch:85%;font-weight:700;font-size:24px;display:block}
+.channels .d{font-size:12px;color:var(--ink-2)}
+.gauge{width:100%;height:auto;display:block}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.card h2{font-stretch:110%;font-size:19px;margin:0 0 4px;letter-spacing:-.005em}
+.card .lead{color:var(--ink-2);margin:0 0 16px;font-size:14px;max-width:72ch}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:1100px){.two{grid-template-columns:1fr}}
+
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;list-style:none;padding:0;margin:0}
+@media (max-width:760px){.pipe{grid-template-columns:1fr 1fr}}
+.pipe li{border:1px solid var(--line);border-radius:10px;padding:12px;position:relative;background:var(--bg);transition:border-color .2s}
+.pipe li .n{font-size:12px;color:var(--ink-2)}
+.pipe li b{display:block;font-size:14px}
+.pipe li .c{font-stretch:85%;font-weight:700;font-size:26px;display:block;margin-top:6px}
+.pipe li .s{font-size:12px;color:var(--ink-2)}
+.pipe li.on{border-color:var(--green)}
+.pipe li.done .n::after{content:" ✓";color:var(--good);font-weight:700}
+.srcs{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;font-size:13px;color:var(--ink-2)}
+.srcs b{color:var(--ink)}
+
+/* drivers */
+.drv{display:grid;grid-template-columns:minmax(150px,200px) minmax(0,1fr) 92px;gap:6px 12px;align-items:center;font-size:14px}
+.drv .t{height:18px;position:relative;background:var(--surface-2);border-radius:4px}
+.drv .bar{position:absolute;top:0;bottom:0;border-radius:4px}
+.drv .bar.base{background:var(--ink-2);opacity:.55}
+.drv .bar.up{background:var(--good)}
+.drv .bar.dn{background:var(--bad)}
+.drv .bar.tot{background:var(--yellow)}
+.drv .amt{text-align:right;font-weight:600}
+.drv .amt.up{color:var(--good)} .drv .amt.dn{color:var(--bad)}
+.drv .lbl small{display:block;color:var(--ink-2);font-size:12px;line-height:1.3}
+.drv .total{font-weight:700}
+
+/* condition */
+.comp{display:grid;grid-template-columns:minmax(0,1fr) 44px 86px;gap:8px 12px;align-items:center;font-size:14px;padding:8px 0;border-top:1px solid var(--line)}
+.comp:first-of-type{border-top:0}
+.meter{height:6px;border-radius:3px;background:var(--surface-2);margin-top:4px;position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;border-radius:3px}
+.comp .imp{text-align:right;font-weight:600}
+.note{background:var(--surface-2);border-radius:8px;padding:12px 14px;font-size:14px;margin-top:14px}
+.note b{display:block}
+
+/* comps table */
+.tablewrap{overflow-x:auto;margin:0 -4px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:820px}
+th{text-align:left;font-weight:600;color:var(--ink-2);font-size:12.5px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.num,th.num{text-align:right}
+tr.off td{color:var(--ink-2);text-decoration:line-through;text-decoration-color:var(--ink-2)}
+tr.off td:first-child{text-decoration:none}
+.tag{display:inline-block;padding:1px 7px;border-radius:5px;font-size:12px;font-weight:600}
+.tag.sold{background:var(--green-soft);color:var(--ink)}
+.tag.ask{background:var(--surface-2);color:var(--ink-2)}
+.sim{display:inline-flex;align-items:center;gap:6px}
+.sim i{display:inline-block;width:36px;height:5px;background:var(--surface-2);border-radius:3px;position:relative;overflow:hidden}
+.sim i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);background:var(--green)}
+.tablefoot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:13px;color:var(--ink-2)}
+td input{accent-color:var(--green);width:16px;height:16px}
+
+/* market */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.stats div{background:var(--bg);border-radius:8px;padding:10px 12px}
+.stats .k{font-size:12.5px;color:var(--ink-2);display:block}
+.stats .v{font-stretch:85%;font-weight:700;font-size:22px}
+.trend{width:100%;height:auto;display:block}
+
+/* fleet & history */
+.fleethead{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between;margin-bottom:16px}
+.fleethead h1{font-stretch:115%;font-size:28px;margin:0;letter-spacing:-.015em}
+.fleethead p{margin:4px 0 0;color:var(--ink-2)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:760px){.kpis{grid-template-columns:1fr 1fr}}
+.kpis div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpis .k{font-size:13px;color:var(--ink-2);display:block}
+.kpis .v{font-stretch:80%;font-weight:800;font-size:30px}
+.flag{color:var(--warn);font-weight:600}
+tfoot td{font-weight:700;border-bottom:0}
+.histlist{list-style:none;margin:0;padding:0}
+.histlist li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+.histlist li:first-child{border-top:0}
+.histlist .m{font-weight:600}
+.histlist .s{font-size:13px;color:var(--ink-2)}
+.histlist .v{font-stretch:85%;font-weight:700;font-size:20px}
+
+footer{max-width:1280px;margin:0 auto;padding:0 20px 32px;font-size:12.5px;color:var(--ink-2)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:20;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  .top,nav.tabs,aside,.actions,footer,.toast,td input,.tablefoot .linkbtn{display:none!important}
+  body{background:#fff;color:#000}
+  .layout{display:block}
+  .card,.panel{break-inside:avoid;border-color:#ccc}
+  table{min-width:0}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><b>John Deere</b><span>Used Equipment Valuation</span></div>
+    <div class="powered">Powered by <strong>Krank Valuq</strong></div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="true" data-view="value">Valuation</button>
+    <button role="tab" aria-selected="false" data-view="fleet">Fleet</button>
+    <button role="tab" aria-selected="false" data-view="history">History</button>
+  </nav>
+</header>
+
+<main>
+  <!-- VALUATION VIEW -->
+  <section class="view" id="view-value">
+    <div class="layout">
+      <aside class="panel" aria-label="Machine details">
+        <h2>Machine details</h2>
+        <p class="hint">Enter a PIN to fill the model and year, or choose them below.</p>
+        <div class="field">
+          <label for="pin">Product identification number (PIN)</label>
+          <div class="pin"><input id="pin" type="text" placeholder="e.g. 1T0350GXCNF412873" autocomplete="off"><button class="btn" id="decode" type="button">Decode</button></div>
+        </div>
+        <div class="field">
+          <label for="model">Model</label>
+          <select id="model"></select>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="year">Model year</label><select id="year"></select></div>
+          <div class="field"><label for="hours">Hours</label><input id="hours" type="number" min="0" step="10" value="4200"></div>
+        </div>
+        <div class="field">
+          <label for="region">Machine location</label>
+          <select id="region"></select>
+        </div>
+        <div class="field">
+          <span class="lab" id="condlab">Condition</span>
+          <div class="seg" role="group" aria-labelledby="condlab">
+            <button type="button" id="cond-inspeq" aria-pressed="true">Inspeq report</button>
+            <button type="button" id="cond-self" aria-pressed="false">Self-rated</button>
+          </div>
+          <div id="cond-inspeq-box">
+            <input id="report" type="text" value="INS-26-10482" aria-label="Inspeq report ID" style="margin-top:8px;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)">
+            <div class="linked" id="linked"></div>
+          </div>
+          <div id="cond-self-box" hidden>
+            <select id="selfcond" aria-label="Self-rated condition" style="margin-top:8px;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)">
+              <option>Excellent</option><option selected>Good</option><option>Fair</option><option>Poor</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <span class="lab">Options and attachments</span>
+          <div class="checks" id="atts"></div>
+        </div>
+        <button class="btn primary" id="run" type="button">Run valuation</button>
+        <div class="formfoot"><button class="linkbtn" id="example" type="button">Load example machine</button><span style="color:var(--ink-2)">Demo data</span></div>
+      </aside>
+
+      <div id="out">
+        <div class="panel empty">
+          <h2>What is this machine worth today?</h2>
+          <p>Valuq searches dealer listings and auction results for comparable John Deere machines, cleans the data, and prices yours on hours, condition, options and location. You get a fair market value, trade-in and auction figures, and the comparables behind them.</p>
+          <button class="btn" id="example2" type="button">Load example machine</button>
+          <ol class="how">
+            <li><b>Enter</b>PIN, hours, location</li>
+            <li><b>Search</b>Listings and auction results</li>
+            <li><b>Clean</b>Duplicates, outliers, stale ads</li>
+            <li><b>Price</b>Model weighs comparables</li>
+            <li><b>Act</b>List, trade in, or report</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLEET VIEW -->
+  <section class="view" id="view-fleet" hidden>
+    <div class="fleethead">
+      <div><h1>Used inventory, Heartland branch</h1><p>Quick values for every unit on the lot. Open any unit for a full valuation with comparables.</p></div>
+      <div class="actions"><button class="btn" data-toast="CSV import isn't connected in this prototype.">Import CSV</button><button class="btn" id="revalue">Revalue all</button></div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="card"><div class="tablewrap"><table id="fleet"></table></div></div>
+  </section>
+
+  <!-- HISTORY VIEW -->
+  <section class="view" id="view-history" hidden>
+    <div class="fleethead"><div><h1>Valuation history</h1><p>Valuations run in this browser. Each one keeps the comparables used at the time.</p></div>
+    <div class="actions"><button class="btn" id="clearhist">Clear history</button></div></div>
+    <div class="card"><ul class="histlist" id="hist"></ul></div>
+  </section>
+</main>
+<footer>Prototype by Krank for discussion with John Deere. All prices, listings and inspection results are illustrative demo data, not real market values.</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const usd = n => '$' + Math.round(n).toLocaleString('en-US');
+const usdK = n => { const a = Math.abs(n); const s = n < 0 ? '−' : '+'; return s + (a >= 1000 ? '$' + (a / 1000).toFixed(a >= 100000 ? 0 : 1) + 'k' : '$' + Math.round(a)); };
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NOW_YEAR = 2026.8;
+
+const MODELS = [
+  {id:'350g', name:'350G LC Excavator', cat:'Excavators', newPrice:415000, hpy:1100, pin:'1T0350GX', tracked:true, atts:[['Hydraulic thumb',9500],['Quick coupler',6000],['SmartGrade grade control',38000],['Heavy-duty bucket, 54 in',4500]]},
+  {id:'210g', name:'210G LC Excavator', cat:'Excavators', newPrice:268000, hpy:1100, pin:'1T0210GX', tracked:true, atts:[['Hydraulic thumb',7500],['Quick coupler',5000],['SmartGrade grade control',34000]]},
+  {id:'644l', name:'644L Wheel Loader', cat:'Loaders', newPrice:335000, hpy:1300, pin:'1DW644LX', tracked:false, atts:[['Ride control',4000],['Payload scale',7500],['Pallet forks',6500],['High-lift linkage',9000]]},
+  {id:'333g', name:'333G Compact Track Loader', cat:'Loaders', newPrice:98000, hpy:700, pin:'1T0333GX', tracked:true, atts:[['High-flow hydraulics',5500],['Enclosed cab with A/C',6000],['Two-speed travel',2500],['Grapple bucket',4000]]},
+  {id:'700l', name:'700L Crawler Dozer', cat:'Dozers', newPrice:265000, hpy:1000, pin:'1T0700LX', tracked:true, atts:[['SmartGrade grade control',42000],['Rear ripper',12000],['LGP undercarriage',8000]]},
+  {id:'310sl', name:'310SL Backhoe Loader', cat:'Backhoes', newPrice:152000, hpy:800, pin:'1T0310SX', tracked:false, atts:[['Extendable dipperstick',7000],['Four-wheel drive',6000],['Pilot controls',4500]]},
+  {id:'772g', name:'772G Motor Grader', cat:'Motor graders', newPrice:430000, hpy:1000, pin:'1DW772GX', tracked:false, atts:[['Six-wheel drive',28000],['Front blade',9000],['Rear ripper',11000],['SmartGrade grade control',45000]]},
+  {id:'8r370', name:'8R 370 Tractor', cat:'Agriculture', newPrice:520000, hpy:450, pin:'1RW8370R', tracked:false, atts:[['AutoTrac activation',8000],['IVT transmission',22000],['Front hitch and PTO',12000]]},
+  {id:'s780', name:'S780 Combine', cat:'Agriculture', newPrice:690000, hpy:350, pin:'1H0S780S', tracked:false, atts:[['ProDrive transmission',18000],['Combine Advisor',9000],['Rubber tracks',45000]]}
+];
+const REGIONS = [['Midwest US',1.00],['Southeast US',0.98],['Southwest US',1.01],['West US',1.04],['Northeast US',0.99],['Canada (Prairies)',0.96]];
+const CITIES = [['Des Moines, IA','Midwest US'],['Peoria, IL','Midwest US'],['Omaha, NE','Midwest US'],['Fargo, ND','Midwest US'],['Columbus, OH','Midwest US'],['Atlanta, GA','Southeast US'],['Nashville, TN','Southeast US'],['Dallas, TX','Southwest US'],['Phoenix, AZ','Southwest US'],['Sacramento, CA','West US'],['Denver, CO','West US'],['Harrisburg, PA','Northeast US'],['Albany, NY','Northeast US'],['Saskatoon, SK','Canada (Prairies)']];
+const YEAR_CODES = {J:2018,K:2019,L:2020,M:2021,N:2022,P:2023,R:2024,S:2025,H:2017,G:2016};
+const SELF = {Excellent:90, Good:72, Fair:55, Poor:35};
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* deterministic random */
+function hash(s){let h=2166136261;for(const ch of s){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const pick = (r, arr) => arr.at(Math.floor(r() * arr.length));
+
+/* valuation model */
+function parts(m, year, hours){
+  const age = Math.max(0.3, NOW_YEAR - year - 0.5);
+  const ageF = 0.84 * Math.pow(0.905, age);
+  const exp = m.hpy * age;
+  const hoursF = clamp(1 - 0.14 * (Math.max(hours, 1) / exp - 1), 0.72, 1.12);
+  return {age, ageF, exp, hoursF, base: m.newPrice * ageF};
+}
+const condF = c => 0.831 + 0.0026 * c;
+function modelValue(m, year, hours, regF, cond, attVal){
+  const p = parts(m, year, hours);
+  return (p.base * p.hoursF * condF(cond) + attVal * p.ageF * 0.7) * regF;
+}
+
+/* inspeq report (demo) */
+function inspeqReport(m, id){
+  const r = rng(hash(id + m.id));
+  const names = ['Engine and powertrain','Hydraulics', m.tracked ? 'Undercarriage' : 'Tires and axles','Structure and attachments','Cab and electrical'];
+  const w = [0.28,0.24,0.22,0.14,0.12];
+  let scores;
+  if (id.trim().toUpperCase() === 'INS-26-10482') scores = [84,77,52,88,80];
+  else scores = names.map(() => Math.round(50 + r() * 42));
+  const notes = {
+    'Engine and powertrain':'Oil analysis normal, no blow-by, starts clean',
+    'Hydraulics':'Minor weep at boom cylinder seal, pumps within spec',
+    'Undercarriage':'Track chains about 60% worn, two carrier rollers leaking',
+    'Tires and axles':'Tread 45–55%, one tire with sidewall cut',
+    'Structure and attachments':'No cracks on boom or stick, pins tight',
+    'Cab and electrical':'All gauges work, A/C weak, seat worn'
+  };
+  const comps = names.map((n, i) => ({name:n, w:w.at(i), score:scores.at(i), note:notes[n]}));
+  const overall = Math.round(comps.reduce((s, c) => s + c.w * c.score, 0));
+  return {id: id.trim().toUpperCase() || 'INS-26-10482', comps, overall, date:'Oct 9, 2026', inspector:'Dana Whitfield, Heartland Equipment'};
+}
+
+/* comparables */
+function genComps(m, year, regionName){
+  const r = rng(hash(m.id + '|' + year + '|' + regionName));
+  const soldSrc = ['Krank Auctions','Ritchie Bros.','IronPlanet','Krank Auctions'];
+  const askSrc = ['MachineFinder','Machinery Trader','Krank Marketplace','MachineFinder'];
+  const marketF = 0.95 + r() * 0.08;
+  const out = [];
+  for (let i = 0; i < 14; i++){
+    const cy = Math.min(2025, year + [-1,0,0,0,0,1].at(Math.floor(r() * 6)));
+    const cp = parts(m, cy, 1);
+    const ch = Math.max(50, Math.round(cp.exp * (0.55 + r() * 0.9) / 10) * 10);
+    const city = pick(r, CITIES);
+    const regF = REGIONS.find(x => x[0] === city.at(1)).at(1);
+    const months = Math.floor(r() * 11);
+    const sold = r() < 0.56;
+    const src = pick(r, sold ? soldSrc : askSrc);
+    const cond = 50 + r() * 35;
+    const time = 1 + 0.0035 * months;
+    const truth = modelValue(m, cy, ch, regF, cond, 0) * time * marketF * (1 + (r() - 0.5) * 0.14);
+    const price = Math.round((sold ? truth : truth * 1.09) / 250) * 250;
+    out.push({id:i, src, sold, months, year:cy, hours:ch, loc:city.at(0), regF, cond, price});
+  }
+  return out;
+}
+function pipelineCounts(m, year, regionName){
+  const r = rng(hash('pipe' + m.id + year + regionName));
+  const found = 380 + Math.floor(r() * 220);
+  const shares = [['MachineFinder',.28],['Machinery Trader',.24],['Ritchie Bros.',.17],['IronPlanet',.12],['Krank Marketplace',.11],['Krank Auctions',.08]];
+  const bySrc = shares.map(s => [s.at(0), Math.round(found * s.at(1))]);
+  const matched = Math.round(found * (0.6 + r() * 0.08));
+  const dupes = Math.round(matched * (0.18 + r() * 0.06));
+  const after = matched - dupes;
+  const stale = Math.round(after * 0.09), outliers = Math.round(after * 0.05), partsM = Math.round(after * 0.02);
+  const clean = after - stale - outliers - partsM;
+  const sold = Math.round(clean * 0.41);
+  return {found, bySrc, matched, dupes, after, stale, outliers, partsM, clean, sold};
+}
+
+/* state */
+let current = null;
+const history = loadHistory();
+
+/* ---------- form ---------- */
+function initForm(){
+  const sel = $('#model');
+  const cats = [...new Set(MODELS.map(m => m.cat))];
+  sel.innerHTML = cats.map(c => `<optgroup label="${c}">` + MODELS.filter(m => m.cat === c).map(m => `<option value="${m.id}">${m.name}</option>`).join('') + '</optgroup>').join('');
+  $('#year').innerHTML = Array.from({length:14}, (_, i) => 2025 - i).map(y => `<option>${y}</option>`).join('');
+  $('#year').value = '2022';
+  $('#region').innerHTML = REGIONS.map(r => `<option>${r.at(0)}</option>`).join('');
+  sel.addEventListener('change', () => { renderAtts(); renderLinked(); });
+  $('#report').addEventListener('input', renderLinked);
+  $('#cond-inspeq').addEventListener('click', () => setCond('inspeq'));
+  $('#cond-self').addEventListener('click', () => setCond('self'));
+  $('#decode').addEventListener('click', decodePin);
+  $('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') decodePin(); });
+  $('#run').addEventListener('click', () => runValuation(true));
+  $('#example').addEventListener('click', loadExample);
+  renderAtts(); renderLinked();
+}
+function setCond(mode){
+  $('#cond-inspeq').setAttribute('aria-pressed', mode === 'inspeq');
+  $('#cond-self').setAttribute('aria-pressed', mode === 'self');
+  $('#cond-inspeq-box').hidden = mode !== 'inspeq';
+  $('#cond-self-box').hidden = mode !== 'self';
+}
+const condMode = () => $('#cond-inspeq').getAttribute('aria-pressed') === 'true' ? 'inspeq' : 'self';
+function getModel(){ return MODELS.find(m => m.id === $('#model').value); }
+function renderAtts(checked){
+  const m = getModel();
+  $('#atts').innerHTML = m.atts.map((a, i) => `<label><input type="checkbox" value="${i}" ${checked && checked.includes(i) ? 'checked' : ''}> ${a.at(0)} <small>new ${usd(a.at(1))}</small></label>`).join('');
+}
+function renderLinked(){
+  const rep = inspeqReport(getModel(), $('#report').value || 'INS-26-10482');
+  $('#linked').innerHTML = `<span class="score-chip">${rep.overall}</span> Linked, inspected ${rep.date}`;
+}
+function decodePin(){
+  const pin = $('#pin').value.trim().toUpperCase();
+  const m = MODELS.find(x => pin.startsWith(x.pin));
+  const y = YEAR_CODES[pin.charAt(9)];
+  if (!m || !y){ toast('PIN not recognized. Choose the model and year below.'); return; }
+  $('#model').value = m.id; $('#year').value = String(y); renderAtts(); renderLinked();
+  toast(`Decoded: ${y} ${m.name}`);
+}
+function loadExample(){
+  $('#pin').value = '1T0350GXCNF412873';
+  $('#model').value = '350g'; $('#year').value = '2022'; $('#hours').value = '4180';
+  $('#region').value = 'Midwest US'; $('#report').value = 'INS-26-10482';
+  setCond('inspeq'); renderAtts([0,1]); renderLinked();
+  runValuation(true);
+}
+
+/* ---------- valuation ---------- */
+function readInputs(){
+  const m = getModel();
+  const region = $('#region').value;
+  const regF = REGIONS.find(r => r.at(0) === region).at(1);
+  const mode = condMode();
+  const rep = mode === 'inspeq' ? inspeqReport(m, $('#report').value || 'INS-26-10482') : null;
+  const cond = rep ? rep.overall : SELF[$('#selfcond').value];
+  const attIdx = $$('#atts input:checked').map(i => Number(i.value));
+  const attVal = attIdx.reduce((s, i) => s + m.atts.at(i).at(1), 0);
+  return {m, year:Number($('#year').value), hours:Math.max(1, Number($('#hours').value) || 1), region, regF, mode, rep, cond, selfLabel:$('#selfcond').value, attIdx, attVal, pin:$('#pin').value.trim().toUpperCase()};
+}
+function runValuation(animate, inputs){
+  const s = inputs || readInputs();
+  const comps = genComps(s.m, s.year, s.region);
+  const subjV = modelValue(s.m, s.year, s.hours, s.regF, s.cond, 0);
+  comps.forEach(c => {
+    const compV = modelValue(s.m, c.year, c.hours, c.regF, c.cond, 0) * (1 + 0.0035 * c.months);
+    const base = c.sold ? c.price : c.price * 0.92;
+    c.adj = base * subjV / compV;
+    c.sim = clamp(Math.round(100 - Math.abs(c.year - s.year) * 7 - Math.min(20, Math.abs(c.hours / s.hours - 1) * 25) - c.months * 1.2 - (c.regF === s.regF ? 0 : 3)), 55, 99);
+    c.w = Math.pow(c.sim / 100, 2) * (c.sold ? 1 : 0.55);
+  });
+  comps.sort((a, b) => b.sim - a.sim);
+  const d = new Date(2026, 9, 16);
+  current = {s, comps, excluded:new Set(), pipe:pipelineCounts(s.m, s.year, s.region), id:'VQ-261016-' + String(hash(JSON.stringify([s.m.id,s.year,s.hours,s.region,s.cond,s.attIdx])) % 9000 + 1000), date:'Oct 16, 2026', created:d.getTime()};
+  compute(current);
+  renderResult(current, animate);
+  saveHistory(current);
+  if (window.innerWidth <= 920) $('#out').scrollIntoView({behavior: reduce ? 'auto' : 'smooth'});
+}
+function compute(v){
+  const s = v.s, p = parts(s.m, s.year, s.hours);
+  const used = v.comps.filter(c => !v.excluded.has(c.id));
+  const sw = used.reduce((a, c) => a + c.w, 0);
+  const mean = used.reduce((a, c) => a + c.w * c.adj, 0) / sw;
+  const sd = Math.sqrt(used.reduce((a, c) => a + c.w * (c.adj - mean) ** 2, 0) / sw);
+  const attAdd = s.attVal * p.ageF * 0.7 * s.regF;
+  const fmv = mean + attAdd;
+  const spread = Math.max(1.15 * sd, 0.05 * fmv);
+  const conf = clamp(Math.round(96 - (sd / mean) * 260 - Math.max(0, 10 - used.length) * 3 - (s.mode === 'self' ? 8 : 0)), 45, 95);
+  // drivers
+  const b0 = p.base;
+  const v1 = b0 * p.hoursF;
+  const v2 = v1 * condF(s.cond);
+  const v3 = v2 + s.attVal * p.ageF * 0.7;
+  const v4 = v3 * s.regF;
+  v.calc = {fmv, low:fmv - spread, high:fmv + spread, conf, used:used.length, sold:used.filter(c => c.sold).length,
+    retail:fmv * 1.08, trade:fmv * 0.84, auction:fmv * 0.90, p,
+    drivers:[
+      {k:'Model baseline', sub:`${s.year} ${s.m.name.split(' ')[0]}, ${Math.round(p.exp).toLocaleString()} hrs expected, average condition`, v:b0, base:true},
+      {k:'Hours', sub:`${s.hours.toLocaleString()} hrs vs ${Math.round(p.exp).toLocaleString()} expected`, d:v1 - b0},
+      {k:'Condition', sub: s.rep ? `Inspeq score ${s.rep.overall} vs 65 average` : `Self-rated ${s.selfLabel.toLowerCase()}`, d:v2 - v1},
+      {k:'Options and attachments', sub: s.attIdx.length ? s.attIdx.map(i => s.m.atts.at(i).at(0)).join(', ') : 'None selected', d:v3 - v2},
+      {k:'Location', sub:`${s.region} demand and freight`, d:v4 - v3},
+      {k:'Current market', sub:`${used.length} comparables vs model curve`, d:fmv - v4},
+      {k:'Fair market value', sub:'', v:fmv, total:true}
+    ]};
+}
+
+/* ---------- render result ---------- */
+function renderResult(v, animate){
+  const s = v.s, c = v.calc;
+  $('#out').innerHTML = `
+  <div class="result">
+    <div class="panel">
+      <div class="machine">
+        <div><h1>${s.year} John Deere ${s.m.name}</h1>
+        <div class="meta">${s.hours.toLocaleString()} hours, ${s.region}${s.pin ? ', PIN ' + s.pin : ''}</div></div>
+        <div class="meta">Valuation ${v.id}, ${v.date}</div>
+      </div>
+      <div class="valrow" style="margin-top:18px">
+        <div>
+          <p class="fmv-lab">Fair market value</p>
+          <div class="fmv" id="fmv">${usd(c.fmv)}</div>
+          <div class="fmv-sub" id="range">Likely range ${usd(c.low)} to ${usd(c.high)}. <span class="conf">Confidence ${c.conf}% <i style="--w:${c.conf}%"></i></span></div>
+        </div>
+        <div class="channels" id="channels">${channelsHTML(c)}</div>
+      </div>
+      <div style="margin-top:18px" id="gauge">${gaugeSVG(c)}</div>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn" id="print">Download report</button>
+        <button class="btn" data-toast="Draft listing created on MachineFinder at ${usd(c.retail)}.">List on MachineFinder</button>
+        <button class="btn" data-toast="Trade-in offer of ${usd(c.trade)} sent for approval.">Send trade-in offer</button>
+        <button class="btn" data-toast="Shareable link copied.">Share</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>How this price was built</h2>
+      <p class="lead">Valuq searched six sources for ${s.m.name.split(' ')[0]} units within a year of ${s.year}, then cleaned the results before pricing.</p>
+      <ol class="pipe" id="pipe">
+        <li data-n="${v.pipe.found}"><span class="n">Search</span><b>Listings and results found</b><span class="c">0</span><span class="s">across 6 sources</span></li>
+        <li data-n="${v.pipe.matched}"><span class="n">Match</span><b>Same model and year band</b><span class="c">0</span><span class="s">${v.pipe.found - v.pipe.matched} other models dropped</span></li>
+        <li data-n="${v.pipe.after}"><span class="n">Deduplicate</span><b>Unique machines</b><span class="c">0</span><span class="s">${v.pipe.dupes} cross-listed copies merged</span></li>
+        <li data-n="${v.pipe.clean}"><span class="n">Filter</span><b>Clean records</b><span class="c">0</span><span class="s">${v.pipe.stale} stale, ${v.pipe.outliers} outliers, ${v.pipe.partsM} parts units removed</span></li>
+        <li data-n="${c.used}"><span class="n">Price</span><b>Closest comparables weighted</b><span class="c">0</span><span class="s" id="pipe-sold">${c.sold} sold results, ${c.used - c.sold} asking</span></li>
+      </ol>
+      <div class="srcs">${v.pipe.bySrc.map(x => `<span><b>${x.at(1)}</b> ${x.at(0)}</span>`).join('')}</div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h2>What moved the price</h2>
+        <p class="lead">Starting from an average ${s.year} unit, each factor adds or takes away value.</p>
+        <div class="drv" id="drivers">${driversHTML(c)}</div>
+      </div>
+      <div class="card">${conditionHTML(v)}</div>
+    </div>
+
+    <div class="card">
+      <h2>Comparables</h2>
+      <p class="lead">The 14 closest machines, adjusted to match yours. Sold results count more than asking prices. Clear a row to exclude it and the value updates.</p>
+      <div class="tablewrap"><table id="comps">${compsHTML(v)}</table></div>
+      <div class="tablefoot"><span id="compnote">${compNote(v)}</span><button class="linkbtn" id="resetcomps" type="button">Include all</button></div>
+    </div>
+
+    <div class="card">${marketHTML(v)}</div>
+  </div>`;
+  bindResult();
+  animatePipe(animate);
+}
+function channelsHTML(c){
+  return `<div><span class="k">Dealer retail</span><span class="v">${usd(c.retail)}</span><span class="d">Suggested asking price</span></div>
+    <div><span class="k">Trade-in</span><span class="v">${usd(c.trade)}</span><span class="d">Offer to customer</span></div>
+    <div><span class="k">Auction</span><span class="v">${usd(c.auction)}</span><span class="d">Expected hammer price</span></div>`;
+}
+function gaugeSVG(c){
+  const lo = c.fmv * 0.76, hi = c.fmv * 1.15, W = 600, L = 12, R = 588;
+  const X = v => L + (v - lo) / (hi - lo) * (R - L);
+  const mark = (v, label, up) => `<line x1="${X(v)}" x2="${X(v)}" y1="34" y2="54" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="${X(v)}" y="${up ? 26 : 72}" text-anchor="middle" font-size="12.5" fill="var(--ink-2)">${label}</text>`;
+  return `<svg class="gauge" viewBox="0 0 ${W} 82" role="img" aria-label="Value scale from auction to retail with the likely range">
+    <rect x="${L}" y="40" width="${R - L}" height="8" rx="4" fill="var(--surface-2)"/>
+    <rect x="${X(c.low)}" y="40" width="${X(c.high) - X(c.low)}" height="8" rx="4" fill="var(--green)" opacity=".45"/>
+    ${mark(c.trade, 'Trade-in', true)}${mark(c.auction, 'Auction', false)}${mark(c.retail, 'Retail', true)}
+    <circle cx="${X(c.fmv)}" cy="44" r="9" fill="var(--yellow)" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="${X(c.fmv)}" y="72" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink)">Fair market value</text>
+  </svg>`;
+}
+function driversHTML(c){
+  const ds = c.drivers;
+  let run = 0; const pts = [];
+  ds.forEach(d => { if (d.base){ run = d.v; pts.push([0, run]); } else if (d.total){ pts.push([0, d.v]); } else { pts.push([run, run + d.d]); run += d.d; } });
+  const all = pts.flat();
+  const mn = Math.min(...all.filter(x => x > 0)) * 0.9, mx = Math.max(...all) * 1.02;
+  const P = x => clamp((Math.max(x, mn) - mn) / (mx - mn) * 100, 0, 100);
+  return ds.map((d, i) => {
+    const [a, b] = pts.at(i);
+    const lft = P(Math.min(a, b)), wid = Math.max(0.8, P(Math.max(a, b)) - lft);
+    const cls = d.base ? 'base' : d.total ? 'tot' : (d.d >= 0 ? 'up' : 'dn');
+    const amt = d.base || d.total ? usd(d.v) : usdK(d.d);
+    return `<div class="lbl ${d.total ? 'total' : ''}">${d.k}${d.sub ? `<small>${d.sub}</small>` : ''}</div>
+      <div class="t"><span class="bar ${cls}" style="left:${lft}%;width:${wid}%"></span></div>
+      <div class="amt ${d.base || d.total ? '' : cls} ${d.total ? 'total' : ''}">${amt}</div>`;
+  }).join('');
+}
+function conditionHTML(v){
+  const s = v.s, p = v.calc.p;
+  if (!s.rep){
+    return `<h2>Condition</h2><p class="lead">Self-rated as ${s.selfLabel.toLowerCase()}. Without an inspection, condition is the largest source of uncertainty in this price.</p>
+      <div class="note"><b>Link an Inspeq report</b>A component-level inspection replaces the self-rating, typically narrows the range, and shows which repairs pay for themselves.</div>
+      <button class="btn" style="margin-top:14px" id="toinspeq">Use Inspeq report</button>`;
+  }
+  const base = p.base * p.hoursF * s.regF;
+  const rows = s.rep.comps.map(c => {
+    const imp = c.w * 0.0026 * (c.score - 65) * base;
+    const col = c.score >= 75 ? 'var(--good)' : c.score >= 60 ? 'var(--warn)' : 'var(--bad)';
+    return `<div class="comp"><div>${c.name}<div class="meter"><i style="width:${c.score}%;background:${col}"></i></div><small style="color:var(--ink-2);font-size:12px">${c.note}</small></div>
+      <span class="score-chip">${c.score}</span><span class="imp" style="color:${imp >= 0 ? 'var(--good)' : 'var(--bad)'}">${usdK(imp)}</span></div>`;
+  }).join('');
+  const worst = s.rep.comps.slice().sort((a, b) => a.score - b.score).at(0);
+  const lift = worst.w * 0.0026 * (82 - worst.score) * base;
+  const cost = lift * 0.58;
+  return `<h2>Condition from Inspeq</h2><p class="lead">Report ${s.rep.id}, inspected ${s.rep.date} by ${s.rep.inspector}. Overall score ${s.rep.overall} of 100.</p>
+    ${rows}
+    ${worst.score < 70 ? `<div class="note"><b>Repair before resale</b>${worst.name} scored ${worst.score}. Bringing it to about 82 (estimated cost ${usd(cost)}) would add roughly ${usd(lift)} to fair market value.</div>` : ''}`;
+}
+function compsHTML(v){
+  const head = `<thead><tr><th><span class="sr" style="position:absolute;left:-9999px">Include</span></th><th>Source</th><th>Type</th><th class="num">Year</th><th class="num">Hours</th><th>Location</th><th>Date</th><th class="num">Price</th><th class="num">Adjusted to yours</th><th>Match</th></tr></thead>`;
+  const now = new Date(2026, 9, 1);
+  const rows = v.comps.map(c => {
+    const off = v.excluded.has(c.id);
+    const dt = new Date(now.getFullYear(), now.getMonth() - c.months, 1);
+    return `<tr class="${off ? 'off' : ''}"><td><input type="checkbox" data-comp="${c.id}" ${off ? '' : 'checked'} aria-label="Include ${c.src} ${c.year}"></td>
+      <td>${c.src}</td><td><span class="tag ${c.sold ? 'sold' : 'ask'}">${c.sold ? 'Sold' : 'Asking'}</span></td>
+      <td class="num">${c.year}</td><td class="num">${c.hours.toLocaleString()}</td><td>${c.loc}</td>
+      <td>${MONTHS.at(dt.getMonth())} ${dt.getFullYear()}</td><td class="num">${usd(c.price)}</td><td class="num"><b>${usd(c.adj)}</b></td>
+      <td><span class="sim"><i style="--w:${c.sim}%"></i>${c.sim}%</span></td></tr>`;
+  }).join('');
+  return head + '<tbody>' + rows + '</tbody>';
+}
+function compNote(v){
+  const n = v.excluded.size;
+  return n ? `${n} excluded. Value recalculated from ${v.calc.used} comparables.` : `Using all ${v.calc.used} comparables.`;
+}
+function marketHTML(v){
+  const s = v.s, fmv = v.calc.fmv;
+  const r = rng(hash('trend' + s.m.id));
+  const slope = -0.004 + r() * 0.005, phase = r() * 6.28;
+  const idx = [];
+  for (let i = 0; i < 18; i++){ idx.push(1 - slope * (11 - i) + 0.012 * Math.sin((i + 10) / 12 * 6.283 + phase) + (i < 12 ? (r() - 0.5) * 0.008 : 0)); }
+  const ref = idx.at(11);
+  const vals = idx.map(x => fmv * x / ref);
+  const band = vals.map((x, i) => i < 12 ? 0 : x * 0.014 * (i - 11));
+  const listed = 40 + Math.floor(r() * 120), dom = 35 + Math.floor(r() * 55);
+  const chg = vals.at(11) / vals.at(8) - 1;
+  const W = 680, H = 230, L = 64, Rr = 660, T = 18, B = 196;
+  const lo = Math.min(...vals.map((x, i) => x - band.at(i))) * 0.985, hi = Math.max(...vals.map((x, i) => x + band.at(i))) * 1.015;
+  const X = i => L + i * (Rr - L) / 17, Y = y => B - (y - lo) / (hi - lo) * (B - T);
+  const line = (a, b) => vals.slice(a, b).map((y, k) => (k ? 'L' : 'M') + X(a + k).toFixed(1) + ' ' + Y(y).toFixed(1)).join(' ');
+  const bandPath = 'M' + Array.from({length:7}, (_, k) => X(11 + k).toFixed(1) + ' ' + Y(vals.at(11 + k) + band.at(11 + k)).toFixed(1)).join(' L') + ' L' + Array.from({length:7}, (_, k) => X(17 - k).toFixed(1) + ' ' + Y(vals.at(17 - k) - band.at(17 - k)).toFixed(1)).join(' L') + 'Z';
+  const ticks = [lo + (hi - lo) * 0.15, lo + (hi - lo) * 0.5, lo + (hi - lo) * 0.85];
+  const mlabel = i => { const m = (10 + i) % 12; const y = 2025 + Math.floor((10 + i) / 12); return MONTHS.at(m) + (m === 0 || i === 0 ? ' ' + y : ''); };
+  return `<h2>Market for this model</h2>
+    <p class="lead">Fair market value for a ${s.year} ${s.m.name} like yours over the past year, with a six-month outlook.</p>
+    <div class="stats">
+      <div><span class="k">Units listed now</span><span class="v">${listed}</span></div>
+      <div><span class="k">Median days on market</span><span class="v">${dom}</span></div>
+      <div><span class="k">Change, last 90 days</span><span class="v" style="color:${chg >= 0 ? 'var(--good)' : 'var(--bad)'}">${(chg >= 0 ? '+' : '−') + Math.abs(chg * 100).toFixed(1)}%</span></div>
+    </div>
+    <svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="Value trend over 12 months with 6 month forecast">
+      ${ticks.map(t => `<line x1="${L}" x2="${Rr}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)"/><text x="${L - 8}" y="${Y(t) + 4}" text-anchor="end" font-size="11.5" fill="var(--ink-2)">$${Math.round(t / 1000)}k</text>`).join('')}
+      <path d="${bandPath}" fill="var(--green)" opacity=".14"/>
+      <path d="${line(0, 12)}" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+      <path d="${line(11, 18)}" fill="none" stroke="var(--green)" stroke-width="2" stroke-dasharray="5 5"/>
+      <line x1="${X(11)}" x2="${X(11)}" y1="${T}" y2="${B}" stroke="var(--ink-2)" stroke-dasharray="2 4"/>
+      <circle cx="${X(11)}" cy="${Y(vals.at(11))}" r="6" fill="var(--yellow)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text x="${X(11) + 8}" y="${T + 10}" font-size="11.5" fill="var(--ink-2)">Forecast</text>
+      ${[0,3,6,9,11,14,17].map(i => `<text x="${X(i)}" y="${B + 22}" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">${i === 11 ? 'Today' : mlabel(i)}</text>`).join('')}
+    </svg>`;
+}
+function bindResult(){
+  $('#print').addEventListener('click', () => window.print());
+  $$('#comps input[data-comp]').forEach(cb => cb.addEventListener('change', e => {
+    const id = Number(e.target.dataset.comp);
+    if (!e.target.checked){
+      if (current.comps.length - current.excluded.size <= 4){ e.target.checked = true; toast('Keep at least 4 comparables for a reliable value.'); return; }
+      current.excluded.add(id);
+    } else current.excluded.delete(id);
+    refresh();
+  }));
+  $('#resetcomps').addEventListener('click', () => { current.excluded.clear(); refresh(); });
+  const ti = $('#toinspeq'); if (ti) ti.addEventListener('click', () => { setCond('inspeq'); runValuation(false); });
+}
+function refresh(){
+  compute(current);
+  const c = current.calc;
+  $('#fmv').textContent = usd(c.fmv);
+  $('#range').innerHTML = `Likely range ${usd(c.low)} to ${usd(c.high)}. <span class="conf">Confidence ${c.conf}% <i style="--w:${c.conf}%"></i></span>`;
+  $('#channels').innerHTML = channelsHTML(c);
+  $('#gauge').innerHTML = gaugeSVG(c);
+  $('#drivers').innerHTML = driversHTML(c);
+  $('#comps').innerHTML = compsHTML(current);
+  $('#compnote').textContent = compNote(current);
+  const last = $('#pipe li:last-child');
+  last.querySelector('.c').textContent = c.used;
+  $('#pipe-sold').textContent = `${c.sold} sold results, ${c.used - c.sold} asking`;
+  bindResult();
+  saveHistory(current);
+}
+function animatePipe(animate){
+  const items = $$('#pipe li');
+  if (!animate || reduce){ items.forEach(li => { li.classList.add('done'); li.querySelector('.c').textContent = Number(li.dataset.n).toLocaleString(); }); return; }
+  items.forEach((li, i) => {
+    setTimeout(() => {
+      li.classList.add('on');
+      const n = Number(li.dataset.n), t0 = performance.now(), dur = 420;
+      const step = t => { const k = Math.min(1, (t - t0) / dur); li.querySelector('.c').textContent = Math.round(n * k).toLocaleString(); if (k < 1) requestAnimationFrame(step); else { li.classList.remove('on'); li.classList.add('done'); } };
+      requestAnimationFrame(step);
+    }, i * 380);
+  });
+}
+
+/* ---------- fleet ---------- */
+const FLEET = [
+  ['U-1041','350g',2021,5200,'Midwest US'],['U-1047','644l',2020,7400,'Midwest US'],['U-1052','333g',2023,1350,'Midwest US'],
+  ['U-1058','700l',2019,8100,'Southwest US'],['U-1063','310sl',2022,2900,'Midwest US'],['U-1066','210g',2023,2100,'Southeast US'],
+  ['U-1070','772g',2018,9800,'Midwest US'],['U-1074','8r370',2021,2600,'Canada (Prairies)'],['U-1079','s780',2020,1900,'Midwest US']
+];
+const aged = [34,121,12,188,47,63,240,29,96];
+function renderFleet(){
+  let tf = 0, tt = 0, ta = 0;
+  const rows = FLEET.map((u, i) => {
+    const m = MODELS.find(x => x.id === u.at(1)); const regF = REGIONS.find(r => r.at(0) === u.at(4)).at(1);
+    const v = modelValue(m, u.at(2), u.at(3), regF, 65, 0);
+    tf += v; tt += v * 0.84; ta += v * 0.9;
+    const a = aged.at(i);
+    return `<tr><td>${u.at(0)}</td><td>${m.name}</td><td class="num">${u.at(2)}</td><td class="num">${u.at(3).toLocaleString()}</td><td>${u.at(4)}</td>
+      <td class="num"><b>${usd(v)}</b></td><td class="num">${usd(v * 0.84)}</td><td class="num">${usd(v * 0.9)}</td>
+      <td class="num ${a > 120 ? 'flag' : ''}">${a}${a > 120 ? ', consider auction' : ''}</td>
+      <td><button class="linkbtn" data-open="${i}">Full valuation</button></td></tr>`;
+  }).join('');
+  $('#fleet').innerHTML = `<thead><tr><th>Unit</th><th>Machine</th><th class="num">Year</th><th class="num">Hours</th><th>Location</th><th class="num">Quick value</th><th class="num">Trade-in</th><th class="num">Auction</th><th class="num">Days in stock</th><th></th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr><td colspan="5">${FLEET.length} units</td><td class="num">${usd(tf)}</td><td class="num">${usd(tt)}</td><td class="num">${usd(ta)}</td><td colspan="2"></td></tr></tfoot>`;
+  const old = aged.filter(a => a > 120).length;
+  $('#kpis').innerHTML = `<div><span class="k">Units valued</span><span class="v">${FLEET.length}</span></div>
+    <div><span class="k">Inventory at fair market value</span><span class="v">${usd(tf)}</span></div>
+    <div><span class="k">At auction value</span><span class="v">${usd(ta)}</span></div>
+    <div><span class="k">Units over 120 days</span><span class="v" style="color:var(--warn)">${old}</span></div>`;
+  $$('#fleet [data-open]').forEach(b => b.addEventListener('click', () => {
+    const u = FLEET.at(Number(b.dataset.open));
+    $('#pin').value = ''; $('#model').value = u.at(1); $('#year').value = String(u.at(2)); $('#hours').value = String(u.at(3)); $('#region').value = u.at(4);
+    renderAtts(); renderLinked(); show('value'); runValuation(true);
+  }));
+}
+
+/* ---------- history ---------- */
+function loadHistory(){ try { return JSON.parse(localStorage.getItem('valuq-history') || '[]'); } catch(e){ return []; } }
+function saveHistory(v){
+  const s = v.s;
+  const entry = {id:v.id, date:v.date, model:s.m.id, name:`${s.year} ${s.m.name}`, year:s.year, hours:s.hours, region:s.region, mode:s.mode, report:s.rep ? s.rep.id : '', self:s.selfLabel, atts:s.attIdx, fmv:v.calc.fmv, conf:v.calc.conf, pin:s.pin};
+  const i = history.findIndex(h => h.id === entry.id);
+  if (i >= 0) history.splice(i, 1);
+  history.unshift(entry); history.splice(20);
+  try { localStorage.setItem('valuq-history', JSON.stringify(history)); } catch(e){}
+}
+function renderHistory(){
+  const ul = $('#hist');
+  if (!history.length){ ul.innerHTML = `<li><div><div class="m">No valuations yet</div><div class="s">Run a valuation and it will appear here.</div></div><span></span><button class="btn" id="hist-go">New valuation</button></li>`; $('#hist-go').addEventListener('click', () => show('value')); return; }
+  ul.innerHTML = history.map((h, i) => `<li><div><div class="m">${h.name}</div><div class="s">${h.id}, ${h.date}, ${h.hours.toLocaleString()} hrs, ${h.region}, confidence ${h.conf}%</div></div><span class="v">${usd(h.fmv)}</span><button class="btn" data-h="${i}">Open</button></li>`).join('');
+  $$('#hist [data-h]').forEach(b => b.addEventListener('click', () => {
+    const h = history.at(Number(b.dataset.h));
+    $('#pin').value = h.pin || ''; $('#model').value = h.model; $('#year').value = String(h.year); $('#hours').value = String(h.hours); $('#region').value = h.region;
+    setCond(h.mode); if (h.report) $('#report').value = h.report; $('#selfcond').value = h.self || 'Good';
+    renderAtts(h.atts); renderLinked(); show('value'); runValuation(false);
+  }));
+}
+$('#clearhist').addEventListener('click', () => { history.splice(0); try { localStorage.removeItem('valuq-history'); } catch(e){} renderHistory(); toast('History cleared.'); });
+
+/* ---------- shell ---------- */
+function show(view){
+  $$('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === view));
+  ['value','fleet','history'].forEach(v => { $('#view-' + v).hidden = v !== view; });
+  if (view === 'fleet') renderFleet();
+  if (view === 'history') renderHistory();
+  window.scrollTo(0, 0);
+}
+$$('nav.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+$('#revalue').addEventListener('click', () => { renderFleet(); toast('All units revalued against today\u2019s market.'); });
+let tt;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2600); }
+document.addEventListener('click', e => { const b = e.target.closest('[data-toast]'); if (b) toast(b.dataset.toast); });
+$('#example2').addEventListener('click', loadExample);
+
+initForm();
+})();
+</script>
+</body>
+</html>
